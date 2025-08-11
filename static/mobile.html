@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlagPro Mobile</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #ffffff, #ff4b4b);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+        }
+
+        header {
+            text-align: center;
+            padding: 10px;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .upload-box {
+            background: rgba(255,255,255,0.3);
+            backdrop-filter: blur(12px);
+            border-radius: 15px;
+            padding: 20px;
+            width: 100%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.7);
+            font-size: 1rem;
+        }
+
+        .tile-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .tile {
+            background: rgba(255,255,255,0.3);
+            backdrop-filter: blur(8px);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .tile:hover {
+            transform: scale(1.03);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .result-section {
+            background: rgba(255,255,255,0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            width: 100%;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>📱 PlagPro Mobile</header>
+
+    <div class="upload-box">
+        <input type="file" id="fileInput">
+    </div>
+
+    <div class="tile-container">
+        <div class="tile" onclick="runAction('plagiarism')">📄 Check Plagiarism</div>
+        <div class="tile" onclick="runAction('citation')">🔗 Check Citations</div>
+        <div class="tile" onclick="runAction('paraphrase')">✏️ Paraphrase</div>
+        <div class="tile" onclick="runAction('summarize')">📑 Summarize</div>
+    </div>
+
+    <div class="result-section" id="resultBox"></div>
+
+    <script>
+        let extractedText = "";
+
+        document.getElementById('fileInput').addEventListener('change', async function() {
+            const file = this.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            let res = await fetch('/upload', { method: 'POST', body: formData });
+            let data = await res.json();
+            extractedText = data.text || "";
+            alert("File uploaded & text extracted!");
+        });
+
+        async function runAction(action) {
+            if (!extractedText) {
+                alert("Please upload a file first.");
+                return;
+            }
+
+            let endpointMap = {
+                plagiarism: '/check_plagiarism',
+                citation: '/check_citations',
+                paraphrase: '/paraphrase',
+                summarize: '/summarize'
+            };
+
+            let res = await fetch(endpointMap[action], {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: extractedText })
+            });
+
+            let data = await res.json();
+            document.getElementById('resultBox').style.display = 'block';
+            document.getElementById('resultBox').innerText = JSON.stringify(data, null, 2);
+        }
+    </script>
+
+</body>
+</html>
