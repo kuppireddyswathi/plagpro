@@ -1,4 +1,5 @@
 Flask
+flask-cors
 Werkzeug
 qrcode
 pillow
@@ -7,3 +8,6 @@ reportlab
 numpy
 scikit-learn
 nltk
+pandas
+matplotlib
+seaborn
