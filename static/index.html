@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PlagPro — ProofWise AI</title>
+
+  <!-- Fonts & GSAP -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <a href="/qr" target="_blank" class="tile">
+    <i class="icon-phone"></i>
+    <h2>Connect with Mobile</h2>
+</a>
+
+  <style>
+    :root{
+      --accent: #ff4b5c; /* red */
+      --accent-2: #ff8a80; /* lighter red */
+      --glass-dark: rgba(3,6,12,0.55);
+      --muted-light: rgba(255,255,255,0.75);
+      --card-radius: 16px;
+      --max-width: 1200px;
+      --text-dark: #021018;
+    }
+
+    /* Page background: clean white -> red gradient */
+    html,body{height:100%;margin:0;font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:
+      linear-gradient(135deg,#ffffff 0%, #ffe8ea 40%, #ffdde0 60%, #ff4b5c 100%);
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; color:var(--text-dark);
+    }
+
+    /* Page layout */
+    .page { max-width: var(--max-width); margin: 28px auto; padding: 18px; display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items:start; }
+    @media (max-width: 980px){ .page{ grid-template-columns: 1fr; } .side{ order: 2 } }
+
+    header { display:flex; gap:14px; align-items: center; margin-bottom:10px; }
+    .brand { width:72px; height:72px; border-radius:18px; display:flex; align-items:center; justify-content:center; 
+      background: linear-gradient(135deg,var(--accent), var(--accent-2)); color: #181717; font-weight:800; font-size:20px; box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    }
+    .title-block h1 { margin:0; font-size:34px; letter-spacing:1px; color:#c62f2f; text-shadow: 0 6px 20px rgba(255,75,92,0.25); }
+    .title-block p { margin:4px 0 0; color: #c62f2f; font-weight:600; }
+
+    /* Grid of tiles */
+    .grid { display:grid; grid-template-columns: repeat(3,1fr); gap:18px; }
+    @media (max-width:980px) { .grid{ grid-template-columns: repeat(2,1fr); } }
+    @media (max-width:640px) { .grid{ grid-template-columns: 1fr; } }
+
+    .tile { perspective: 1400px; aspect-ratio: 1/1; cursor:pointer; position:relative; }
+    .card-inner { width:100%; height:100%; transform-style: preserve-3d; transition: transform 700ms cubic-bezier(.18,.9,.32,1); }
+    .tile.flipped .card-inner { transform: rotateY(180deg); }
+    .face { position:absolute; inset:0; border-radius: var(--card-radius); padding:18px; display:flex; flex-direction:column; gap:12px; 
+      -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%);
+      box-shadow: 0 14px 56px rgba(2,6,10,0.4);
+      border: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      color: #8f92a7; backface-visibility: hidden;
+    }
+    .face.back { transform: rotateY(180deg); overflow:auto; background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.94)); color: var(--text-dark); }
+
+    .tile-title { font-weight:800; font-size:1.05rem; display:flex; gap:10px; align-items:center; }
+    .tile-sub { color: rgba(23, 23, 23, 0.9); font-weight:600; font-size:0.9rem; }
+
+    .btn { padding:10px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background: linear-gradient(180deg, #ffffff, #fff3f4); color: var(--text-dark); box-shadow: 0 8px 18px rgba(0,0,0,0.06); }
+    .btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.9); box-shadow:none; }
+
+    .chip { padding:8px 10px; border-radius:999px; background: rgba(255,255,255,0.04); font-weight:700; font-size:13px; }
+
+    textarea, .result, .upload-text {
+      width:100%; min-height:140px; border-radius:10px; padding:12px; font-family: Inter, monospace; font-size:14px; resize:vertical;
+    }
+    textarea { border: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.96); color: var(--text-dark); }
+    .result { background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.92)); color: var(--text-dark); white-space: pre-wrap; word-break: break-word; border-radius:10px; padding:12px; }
+
+    /* Side upload panel */
+    .side { display:flex; flex-direction:column; gap:14px; }
+    .panel { padding:14px; border-radius:12px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.04); color: #e90e0e; }
+    .file-row { display:flex; gap:10px; align-items:center; }
+    input[type="file"] { display:none; }
+
+    .muted { color: rgba(10, 10, 10, 0.85); font-weight:600; }
+
+    /* takeover (full screen modal) */
+    .takeover { position: fixed; inset: 0; display: none; align-items:flex-start; justify-content:center; padding:28px; z-index:90; pointer-events:none; }
+    .takeover.show { display:flex; pointer-events:auto; }
+    .takeover-inner { width:100%; max-width:1100px; border-radius:18px; overflow:hidden; background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.94)); color: var(--text-dark); box-shadow: 0 30px 80px rgba(2,16,24,0.6); transform-origin: center top; }
+    .takeover-header { display:flex; align-items:center; justify-content:space-between; padding:16px; border-bottom:1px solid rgba(0,0,0,0.06); }
+    .close-btn { padding:8px 12px; border-radius:10px; border:none; background:#111; color:white; cursor:pointer; }
+
+    .chart-wrap { display:flex; gap:16px; align-items:center; }
+
+    mark { background: linear-gradient(90deg, rgba(255,235,59,0.25), rgba(255,200,80,0.15)); padding:2px 6px; border-radius:6px; color:inherit; }
+
+    /* small loader spinner */
+    .spinner { width:36px; height:36px; border-radius:50%; border:4px solid rgba(0,0,0,0.06); border-top-color:var(--accent); animation:spin 1s linear infinite; }
+    @keyframes spin { from{ transform:rotate(0) } to{ transform:rotate(360deg) } }
+
+    /* entrance */
+    .tile{ animation:tileIn 640ms cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes tileIn { from{ opacity:0; transform: translateY(12px) scale(.98) } to{ opacity:1; transform: translateY(0) scale(1) } }
+
+    /* small responsiveness easing */
+    @media (max-width:540px){
+      .title-block h1{ font-size:26px }
+      .page{ padding:12px }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+    <!-- Left: Tiles -->
+    <div>
+      <header>
+        <div class="brand">PP</div>
+        <div class="title-block">
+          <h1>PlagPro</h1>
+          <p>ProofWise — Upload · Check · Paraphrase · Export</p>
+        </div>
+      </header>
+
+      <div class="grid" id="grid">
+        <!-- Plagiarism tile -->
+        <div class="tile" data-feature="plagiarism">
+          <div class="card-inner">
+            <div class="face front">
+              <div class="tile-title">
+                <!-- icon -->
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 2a10 10 0 100 20 10 10 0 000-20z" stroke="black" stroke-width="1.6"/></svg>
+                <div>Plagiarism</div>
+              </div>
+              <div class="tile-sub">Check uploaded text for duplication</div>
+              <div style="margin-top:auto;display:flex;gap:10px;align-items:center">
+                <button class="btn" onclick="openFeature('plagiarism', this)">Open</button>
+                <div class="chip">Uses side upload</div>
+              </div>
+            </div>
+
+            <div class="face back">
+              <div class="tile-title">Plagiarism — quick</div>
+              <div class="tile-sub muted">Open full screen for detailed report</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Citation tile -->
+        <div class="tile" data-feature="citation">
+          <div class="card-inner">
+            <div class="face front">
+              <div class="tile-title">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M3 7h18M6 7v13h12V7" stroke="black" stroke-width="1.6"/></svg>
+                <div>Citation Check</div>
+              </div>
+              <div class="tile-sub">Detect missing or incorrect citations</div>
+              <div style="margin-top:auto;display:flex;gap:10px;align-items:center">
+                <button class="btn" onclick="openFeature('citation', this)">Open</button>
+                <div class="chip">Auto-use upload</div>
+              </div>
+            </div>
+            <div class="face back"><div style="font-weight:700">Citations</div></div>
+          </div>
+        </div>
+
+        <!-- Paraphrase tile -->
+        <div class="tile" data-feature="paraphrase">
+          <div class="card-inner">
+            <div class="face front">
+              <div class="tile-title">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M4 7h16M4 11h16M4 15h10" stroke="black" stroke-width="1.6"/></svg>
+                <div>Paraphrase</div>
+              </div>
+              <div class="tile-sub">Reword text in different styles</div>
+              <div style="margin-top:auto;display:flex;gap:10px;align-items:center">
+                <button class="btn" onclick="openFeature('paraphrase', this)">Open</button>
+                <div class="chip">Style options</div>
+              </div>
+            </div>
+            <div class="face back"><div style="font-weight:700">Paraphrase</div></div>
+          </div>
+        </div>
+
+        <!-- Export tile -->
+        <div class="tile" data-feature="export">
+          <div class="card-inner">
+            <div class="face front">
+              <div class="tile-title">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 3v12M8 7l4-4 4 4M21 21H3" stroke="black" stroke-width="1.6"/></svg>
+                <div>Export</div>
+              </div>
+              <div class="tile-sub">Export paraphrased output to PDF</div>
+              <div style="margin-top:auto;display:flex;gap:10px;align-items:center">
+                <button class="btn" onclick="openFeature('export', this)">Open</button>
+                <div class="chip">Download</div>
+              </div>
+            </div>
+            <div class="face back"><div style="font-weight:700">Export</div></div>
+          </div>
+        </div>
+
+        <!-- Summarize tile -->
+        <div class="tile" data-feature="summary">
+          <div class="card-inner">
+            <div class="face front">
+              <div class="tile-title">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M4 6h16M4 12h10M4 18h16" stroke="black" stroke-width="1.6"/></svg>
+                <div>Summarize</div>
+              </div>
+              <div class="tile-sub">Concise, detailed or bullet summaries</div>
+              <div style="margin-top:auto;display:flex;gap:10px;align-items:center">
+                <button class="btn" onclick="openFeature('summary', this)">Open</button>
+                <div class="chip">Quick summaries</div>
+              </div>
+            </div>
+            <div class="face back"><div style="font-weight:700">Summary</div></div>
+          </div>
+        </div>
+
+        <!-- Empty filler for layout balance -->
+        <div style="visibility:hidden"></div>
+      </div>
+    </div>
+
+    <!-- Right: persistent Upload side (no animation) -->
+    <aside class="side">
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:800;font-size:16px">Upload & Extract</div>
+            <div class="muted" style="font-size:13px;margin-top:6px">Upload a document once — other tiles use it by default.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px" class="file-row">
+          <div id="selectedFile" class="chip">No file chosen</div>
+          <label class="btn ghost" for="filePicker">Choose</label>
+          <input id="filePicker" type="file" accept=".pdf,.docx,.txt">
+        </div>
+
+        <div style="margin-top:12px">
+          <button class="btn" id="uploadBtnSide">Upload & Extract</button>
+        </div>
+
+        <div style="margin-top:12px">
+          <div style="font-weight:700">Extracted Text</div>
+          <div id="sideExtract" class="upload-text result" style="min-height:220px; overflow:auto">—</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="font-weight:700">Quick Tips</div>
+        <div class="muted" style="font-size:13px;margin-top:8px">
+          1) Upload first. 2) Open a tile to run checks on uploaded text (or paste new text inside a tile). 3) Paraphrase → Export.
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Fullscreen takeover (animated) -->
+  <div class="takeover" id="takeover">
+    <div class="takeover-inner" id="takeoverInner" style="transform-origin:center top">
+      <div class="takeover-header">
+        <div id="takeoverTitle" style="font-weight:800; font-size:18px">Feature</div>
+        <div>
+          <button id="takeoverClose" class="close-btn">Close</button>
+        </div>
+      </div>
+
+      <div id="takeoverBody" style="padding:18px; max-height: calc(100vh - 160px); overflow:auto;">
+        <!-- dynamic content inserted here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT -->
+  <script>
+    /************************************************************************
+     * Shared state
+     ************************************************************************/
+    window.lastCleanText = "";      // set after upload, used by other tiles by default
+    window.lastParaphrased = "";    // set after paraphrase
+
+    const takeover = document.getElementById('takeover');
+    const takeoverInner = document.getElementById('takeoverInner');
+    const takeoverBody = document.getElementById('takeoverBody');
+    const takeoverTitle = document.getElementById('takeoverTitle');
+    const takeoverClose = document.getElementById('takeoverClose');
+    const selectedFileLabel = document.getElementById('selectedFile');
+    const sideExtract = document.getElementById('sideExtract');
+
+    /************************************************************************
+     * Utility: Open takeover from a tile with GSAP elastic animation
+     ************************************************************************/
+    function showTakeover(title, fromRect){
+      takeoverTitle.textContent = title;
+      takeover.classList.add('show');
+
+      // set starting transform to match clicked tile
+      gsap.set(takeoverInner, {
+        x: fromRect.left,
+        y: fromRect.top - 20,
+        width: fromRect.width,
+        height: fromRect.height,
+        borderRadius: 18,
+      });
+
+      gsap.to(takeoverInner, {
+        duration: 0.85,
+        x: 0,
+        y: 0,
+        width: Math.min(window.innerWidth * 0.95, 1100),
+        height: window.innerHeight * 0.86,
+        borderRadius: 14,
+        ease: "elastic.out(1, 0.6)",
+      });
+    }
+
+    function closeTakeover(toRect){
+      if(toRect){
+        // animate back to tile rect
+        gsap.to(takeoverInner, {
+          duration: 0.6,
+          x: toRect.left,
+          y: toRect.top - 20,
+          width: toRect.width,
+          height: toRect.height,
+          borderRadius: 18,
+          ease: "power2.in",
+          onComplete: ()=> { takeover.classList.remove('show'); takeoverBody.innerHTML = ''; }
+        });
+      } else {
+        gsap.to(takeoverInner, { duration: 0.45, scale: 0.95, opacity: 0, ease: "power2.in", onComplete: ()=> { takeover.classList.remove('show'); takeoverBody.innerHTML = ''; gsap.set(takeoverInner,{opacity:1,scale:1}); }});
+      }
+    }
+
+    takeoverClose.addEventListener('click', ()=> {
+      const feature = takeoverTitle.textContent.toLowerCase();
+      const tile = document.querySelector(`.tile[data-feature="${feature}"]`);
+      const rect = tile ? tile.getBoundingClientRect() : null;
+      closeTakeover(rect);
+    });
+
+    /************************************************************************
+     * Upload side logic (persistent, no animation)
+     ************************************************************************/
+    const filePicker = document.getElementById('filePicker');
+    filePicker.addEventListener('change', ()=> {
+      const f = filePicker.files[0];
+      selectedFileLabel.textContent = f ? f.name : 'No file chosen';
+    });
+
+    const uploadBtnSide = document.getElementById('uploadBtnSide');
+    uploadBtnSide.addEventListener('click', async ()=> {
+      const f = filePicker.files[0];
+      if(!f) return alert('Choose a file first');
+      sideExtract.textContent = '⏳ Uploading & extracting...';
+      const fd = new FormData();
+      fd.append('file', f);
+
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: fd });
+        const json = await res.json();
+        if(res.ok && json.extracted_text){
+          window.lastCleanText = json.extracted_text;
+          sideExtract.textContent = json.extracted_text;
+        } else {
+          sideExtract.textContent = json.error || 'Extraction failed';
+        }
+      } catch(e){
+        console.error(e);
+        sideExtract.textContent = '❌ Upload failed — is backend running?';
+      }
+    });
+
+    /************************************************************************
+     * Open feature (called by tile button or tile click)
+     ************************************************************************/
+    function openFeature(feature, btn){
+      // if btn is the small button node inside the tile, get its closest tile; otherwise find tile by feature
+      let tileElem = btn ? btn.closest('.tile') : document.querySelector(`.tile[data-feature="${feature}"]`);
+      if(!tileElem){
+        tileElem = document.querySelector(`.tile[data-feature="${feature}"]`);
+      }
+      const rect = tileElem.getBoundingClientRect();
+      showTakeover(feature.charAt(0).toUpperCase() + feature.slice(1), rect);
+
+      // slight delay to let animation begin, then render appropriate UI
+      setTimeout(()=> renderFeatureUI(feature, tileElem), 260);
+    }
+
+    // allow clicking the whole tile to open
+    document.querySelectorAll('.tile').forEach(t => {
+      t.addEventListener('click', (ev) => {
+        // avoid double-handling clicks on internal open buttons by checking target
+        if(ev.target.closest('button')) return;
+        openFeature(t.dataset.feature, t.querySelector('.btn'));
+      });
+    });
+
+    /************************************************************************
+     * Render UI for features (full-screen views)
+     ************************************************************************/
+    function renderFeatureUI(feature, tileElem){
+      takeoverBody.innerHTML = '';
+      if(feature === 'plagiarism'){
+        takeoverBody.innerHTML = `
+          <div style="display:flex;gap:20px;align-items:flex-start">
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:20px;margin-bottom:8px">Plagiarism Report</div>
+              <div class="muted" style="margin-bottom:12px">Uploaded text is used by default. Paste different text if needed.</div>
+              <textarea id="plagText" style="min-height:160px">${window.lastCleanText || ''}</textarea>
+              <div style="display:flex;gap:12px;margin-top:10px">
+                <button class="btn" id="runPlag">Run Check</button>
+                <button class="btn ghost" id="pasteSide">Use Side Extract</button>
+              </div>
+              <div id="plagTextResults" style="margin-top:14px"></div>
+            </div>
+
+            <div style="width:320px">
+              <div style="font-weight:800;margin-bottom:8px">Originality</div>
+              <div class="chart-wrap" style="padding:12px;border-radius:10px;background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(255,255,255,0.95));">
+                <canvas id="plagChart" width="260" height="160"></canvas>
+                <div style="font-size:0.95rem" id="plagChartLabel">Score will appear here</div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('runPlag').addEventListener('click', runPlagiarism);
+        document.getElementById('pasteSide').addEventListener('click', ()=> { document.getElementById('plagText').value = window.lastCleanText || ''; });
+      }
+
+      else if(feature === 'citation'){
+        takeoverBody.innerHTML = `
+          <div>
+            <div style="font-weight:800;font-size:20px">Citation Analysis</div>
+            <div class="muted" style="margin-bottom:12px">Uploaded text is used by default — edit or paste different text below.</div>
+            <textarea id="citeText" style="min-height:220px">${window.lastCleanText || ''}</textarea>
+            <div style="display:flex;gap:10px;margin-top:10px">
+              <button class="btn" id="runCite">Run Citation Check</button>
+              <button class="btn ghost" id="pasteSideCite">Use Side Extract</button>
+            </div>
+            <div id="citeResults" style="margin-top:12px"></div>
+          </div>
+        `;
+        document.getElementById('runCite').addEventListener('click', runCitation);
+        document.getElementById('pasteSideCite').addEventListener('click', ()=> { document.getElementById('citeText').value = window.lastCleanText || ''; });
+      }
+
+      else if(feature === 'paraphrase'){
+        takeoverBody.innerHTML = `
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:800;font-size:20px">Paraphrase</div>
+              <select id="paraStyleSelect" style="padding:8px;border-radius:8px">
+                <option value="formal">Formal</option>
+                <option value="simplified">Simplified</option>
+                <option value="creative">Creative</option>
+                <option value="technical">Technical</option>
+              </select>
+            </div>
+            <div class="muted" style="margin-bottom:12px">Uploaded text pre-fills below — edit if you want different input.</div>
+            <textarea id="paraText" style="min-height:220px">${window.lastCleanText || ''}</textarea>
+            <div style="display:flex;gap:10px;margin-top:10px">
+              <button class="btn" id="runPara">Paraphrase</button>
+              <button class="btn ghost" id="pasteSidePara">Use Side Extract</button>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:14px">
+              <div style="flex:1">
+                <div style="font-weight:700">Original</div>
+                <div id="paraOriginal" class="result" style="min-height:120px">${window.lastCleanText || ''}</div>
+              </div>
+              <div style="flex:1">
+                <div style="font-weight:700">Paraphrased</div>
+                <div id="paraOut" class="result" style="min-height:120px">—</div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('runPara').addEventListener('click', runParaphrase);
+        document.getElementById('pasteSidePara').addEventListener('click', ()=> { document.getElementById('paraText').value = window.lastCleanText || ''; });
+      }
+
+      else if(feature === 'export'){
+        takeoverBody.innerHTML = `
+          <div>
+            <div style="font-weight:800;font-size:20px">Export PDF</div>
+            <div class="muted" style="margin-bottom:12px">Paraphrased text will be exported. Make sure you paraphrased first.</div>
+            <div style="display:flex;gap:10px">
+              <button class="btn" id="runExport">Generate & Download</button>
+              <button class="btn ghost" id="pasteSideExport">Use Side Extract for export</button>
+            </div>
+            <div id="exportStatus" style="margin-top:12px"></div>
+          </div>
+        `;
+        document.getElementById('runExport').addEventListener('click', runExport);
+        document.getElementById('pasteSideExport').addEventListener('click', ()=> { window.lastParaphrased = window.lastCleanText || ''; document.getElementById('exportStatus').textContent = 'Prefilled from side extract'; });
+      }
+
+      else if(feature === 'summary'){
+        takeoverBody.innerHTML = `
+          <div>
+            <div style="font-weight:800;font-size:20px">Summarize</div>
+            <div class="muted" style="margin-bottom:12px">Uploaded text pre-fills here — choose mode below.</div>
+            <textarea id="summaryText" style="min-height:180px">${window.lastCleanText || ''}</textarea>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <select id="summaryMode" style="padding:8px;border-radius:8px">
+                <option value="concise">Concise</option>
+                <option value="detailed">Detailed</option>
+                <option value="bullet">Bullet Points</option>
+              </select>
+              <button class="btn" id="runSummary">Summarize</button>
+              <button class="btn ghost" id="pasteSideSummary">Use Side Extract</button>
+            </div>
+            <div id="summaryOut" style="margin-top:12px" class="result">—</div>
+          </div>
+        `;
+        document.getElementById('runSummary').addEventListener('click', runSummary);
+        document.getElementById('pasteSideSummary').addEventListener('click', ()=> { document.getElementById('summaryText').value = window.lastCleanText || ''; });
+      }
+    }
+
+    /************************************************************************
+     * Feature implementations — call backend routes and render results
+     ************************************************************************/
+
+    // 1) Plagiarism
+    async function runPlagiarism(){
+      const text = document.getElementById('plagText').value.trim();
+      if(!text) return alert('Paste text or use side extract first');
+      const resultsDiv = document.getElementById('plagTextResults');
+      resultsDiv.innerHTML = '⏳ Running...';
+      try {
+        const r = await fetch('/check_plagiarism', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text })});
+        const json = await r.json();
+        if(r.ok){
+          resultsDiv.innerHTML = `<div style="font-weight:700;margin-bottom:8px">Originality: ${json.originality_score}%</div>` + (json.highlighted_text || json.report_text || 'No issues found');
+          drawPlagChart(json.originality_score || 100);
+        } else {
+          resultsDiv.textContent = json.error || 'Plagiarism check failed';
+          drawPlagChart(100);
+        }
+      } catch(e){
+        console.error(e);
+        resultsDiv.textContent = '❌ Plagiarism check error';
+        drawPlagChart(100);
+      }
+    }
+
+    // draw small pie chart
+    function drawPlagChart(originality){
+      const canvas = document.getElementById('plagChart');
+      if(!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const copied = Math.max(0, 100 - Number(originality || 100));
+      const original = 100 - copied;
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0,0,w,h);
+      const cx = w/2, cy = h/2, r = Math.min(cx,cy)-8;
+      // background
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle = '#eef7f8'; ctx.fill();
+      // original slice
+      const start = -Math.PI/2;
+      const mid = start + (2*Math.PI)*(original/100);
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,start, mid); ctx.closePath(); ctx.fillStyle = '#ff4b5c'; ctx.fill();
+      // copied
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,mid, start + 2*Math.PI); ctx.closePath(); ctx.fillStyle = '#ffcfcc'; ctx.fill();
+      // center label
+      ctx.fillStyle = '#021018'; ctx.font = 'bold 18px Poppins, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(`${originality}%`, cx, cy);
+      const lbl = document.getElementById('plagChartLabel'); if(lbl) lbl.textContent = `Original: ${original}%  •  Copied: ${copied}%`;
+    }
+
+    // 2) Citation
+    async function runCitation(){
+      const text = document.getElementById('citeText').value.trim();
+      if(!text) return alert('Paste text or use side extract first');
+      const out = document.getElementById('citeResults'); out.textContent = '⏳ Running...';
+      try {
+        const r = await fetch('/check_citation', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text })});
+        const json = await r.json();
+        if(r.ok){
+          const res = json.citation_analysis || json;
+          out.textContent = (typeof res === 'string') ? res : JSON.stringify(res, null, 2);
+        } else {
+          out.textContent = json.error || 'Citation check failed';
+        }
+      } catch(e){
+        console.error(e);
+        out.textContent = '❌ Citation error';
+      }
+    }
+
+    // 3) Paraphrase
+    async function runParaphrase(){
+      const text = document.getElementById('paraText').value.trim();
+      const style = document.getElementById('paraStyleSelect').value || 'formal';
+      if(!text) return alert('Paste text or use side extract first');
+      const out = document.getElementById('paraOut'), orig = document.getElementById('paraOriginal');
+      out.textContent = '⏳ Paraphrasing...';
+      try {
+        const r = await fetch('/paraphrase', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, style })});
+        const json = await r.json();
+        if(r.ok && json.paraphrased_text){
+          out.textContent = json.paraphrased_text;
+          orig.textContent = text;
+          window.lastParaphrased = json.paraphrased_text;
+        } else {
+          out.textContent = json.error || 'Paraphrase failed';
+        }
+      } catch(e){
+        console.error(e);
+        out.textContent = '❌ Paraphrase error';
+      }
+    }
+
+    // 4) Export
+    async function runExport(){
+      const status = document.getElementById('exportStatus');
+      status.textContent = '⏳ Generating PDF...';
+      const parap = (window.lastParaphrased || '').trim();
+      if(!parap) return alert('Paraphrase something first (Paraphrase tile)');
+      try {
+        const r = await fetch('/export_pdf', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paraphrased_text: parap })});
+        const json = await r.json();
+        if(r.ok && json.success){
+          // download
+          const blobResp = await fetch('/download_pdf');
+          if(blobResp.ok){
+            const blob = await blobResp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'paraphrased_output.pdf'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            status.textContent = '✅ PDF downloaded';
+          } else {
+            status.textContent = '❌ Download failed';
+          }
+        } else {
+          status.textContent = json.error || 'PDF export failed';
+        }
+      } catch(e){
+        console.error(e);
+        status.textContent = '❌ Export error';
+      }
+    }
+
+    // 5) Summary
+    async function runSummary(){
+      const text = document.getElementById('summaryText').value.trim();
+      const mode = document.getElementById('summaryMode').value || 'concise';
+      if(!text) return alert('Paste text or use side extract first');
+      const out = document.getElementById('summaryOut'); out.textContent = '⏳ Summarizing...';
+      try {
+        const r = await fetch('/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, mode, method:'abstractive' })});
+        const json = await r.json();
+        if(r.ok) out.textContent = json.summary || json.error || 'No summary';
+        else out.textContent = json.error || 'Summary failed';
+      } catch(e){
+        console.error(e);
+        out.textContent = '❌ Summary error';
+      }
+    }
+
+    /************************************************************************
+     * Click outside behavior: close takeover if clicking outside the inner panel
+     ************************************************************************/
+    document.addEventListener('click', (e) => {
+      if(takeover.classList.contains('show') && !e.target.closest('.takeover-inner') && !e.target.closest('.tile')){
+        const currentFeature = takeoverTitle.textContent.toLowerCase();
+        const tile = document.querySelector(`.tile[data-feature="${currentFeature}"]`);
+        const rect = tile ? tile.getBoundingClientRect() : null;
+        closeTakeover(rect);
+      }
+    });
+
+    /************************************************************************
+     * Attach tile open listeners for internal open buttons (in case user uses them)
+     ************************************************************************/
+    document.querySelectorAll('.tile .btn').forEach(b => {
+      b.addEventListener('click', (ev) => {
+        const tile = ev.target.closest('.tile');
+        const feature = tile.dataset.feature;
+        openFeature(feature, ev.target);
+        ev.stopPropagation();
+      });
+    });
+
+    /************************************************************************
+     * Allow Escape key to close takeover
+     ************************************************************************/
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape' && takeover.classList.contains('show')) {
+        const feature = takeoverTitle.textContent.toLowerCase();
+        const tile = document.querySelector(`.tile[data-feature="${feature}"]`);
+        const rect = tile ? tile.getBoundingClientRect() : null;
+        closeTakeover(rect);
+      }
+    });
+
+    /************************************************************************
+     * End of script
+     ************************************************************************/
+  </script>
+</body>
+</html>
