@@ -1,0 +1,9 @@
+Flask
+Werkzeug
+qrcode
+pillow
+PyPDF2
+reportlab
+numpy
+scikit-learn
+nltk
