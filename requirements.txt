@@ -9,3 +9,4 @@ python_docx==1.2.0
 qrcode==8.2
 scikit_learn==1.7.1
 transformers==4.53.2
+PyMuPDF
