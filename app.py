@@ -5,10 +5,7 @@ import re
 import traceback
 import threading
 import webbrowser
-import nltk
-nltk.download('punkt')
-nltk.download('punkt_tab')
-nltk.download('stopwords')
+
 
 
 from utils import extract_text
