@@ -6,6 +6,14 @@ import traceback
 import threading
 import webbrowser
 
+import nltk
+
+# Safe download of NLTK resources without duplicate errors
+for resource in ["punkt", "stopwords", "punkt_tab"]:
+    try:
+        nltk.data.find(f"tokenizers/{resource}" if "punkt" in resource else f"corpora/{resource}")
+    except LookupError:
+        nltk.download(resource, quiet=True)
 
 
 from utils import extract_text
