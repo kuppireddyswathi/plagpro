@@ -206,23 +206,31 @@ def get_mobile_qr():
 def mobile_upload(session_id):
     if request.method == "POST":
         file = request.files.get("file")
-        if file:
-            filename = f"{session_id}_{file.filename}"
-            filepath = os.path.join(MOBILE_UPLOAD_FOLDER, filename)
+        if file and allowed_file(file.filename):
+            # Save file
+            filename = file.filename
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
 
-            # Immediately extract text just like in /upload
+            # Store session info
+            mobile_sessions[session_id] = filename
+
+            # Run same process as /upload
             extracted_text = extract_text(filepath)
 
-            # Store both filename and extracted text
-            mobile_sessions[session_id] = {
-                "filename": filename,
-                "extracted_text": extracted_text
-            }
-            return "✅ File uploaded & processed. You can close this tab."
-        return "❌ No file uploaded."
+            # Optional: You can also run plagiarism, citation check, etc here
+            # duplicates = check_duplicates_in_single_file(extracted_text)
+            # citations = check_citations(extracted_text)
 
-    # Simple HTML form for mobile
+            # Return same format as /upload
+            return jsonify({
+                'filename': filename,
+                'extracted_text': extracted_text
+            })
+
+        return jsonify({'error': 'Invalid file format'}), 400
+
+    # GET method: Show upload page on mobile
     return """
     <!DOCTYPE html>
     <html>
@@ -236,6 +244,7 @@ def mobile_upload(session_id):
     </body>
     </html>
     """
+
 
 @app.route("/check_mobile_file/<session_id>", methods=["GET"])
 def check_mobile_file(session_id):
