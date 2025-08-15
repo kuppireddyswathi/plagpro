@@ -3,18 +3,18 @@ from flask_cors import CORS
 import os
 import re
 import traceback
-import threading
-import webbrowser
-
 import nltk
+import qrcode
+from io import BytesIO
+import base64
+import uuid
 
-# Safe download of NLTK resources without duplicate errors
+# Safe NLTK download
 for resource in ["punkt", "stopwords", "punkt_tab"]:
     try:
         nltk.data.find(f"tokenizers/{resource}" if "punkt" in resource else f"corpora/{resource}")
     except LookupError:
         nltk.download(resource, quiet=True)
-
 
 from utils import extract_text
 from plagiarism_checker import check_duplicates_in_single_file
@@ -22,25 +22,39 @@ from citation_checker import check_citations
 from paraphraser import paraphrase_paragraphs
 from exporter import PDFExporter
 
-# Serve frontend from static/
+# ------------------- App Setup -------------------
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+MOBILE_UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'mobile_uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(MOBILE_UPLOAD_FOLDER, exist_ok=True)
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
 
-# Ensure uploads folder exists
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+RENDER_URL = "https://plagpro-zaha.onrender.com"
+mobile_sessions = {}  # { session_id: filename }
 
+
+# ------------------- Helpers -------------------
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# ---------- ROUTES ----------
+def get_app_base_url():
+    return RENDER_URL
 
+def highlight_lines(text, lines):
+    for line in sorted(lines, key=len, reverse=True):
+        pattern = re.escape(line.strip())
+        text = re.sub(pattern, f"<mark>{line.strip()}</mark>", text, flags=re.IGNORECASE)
+    return text
+
+
+# ------------------- Main Routes -------------------
 @app.route("/")
 def home():
-    """Serve the frontend homepage."""
     return app.send_static_file("index.html")
 
 @app.route('/upload', methods=['POST'])
@@ -56,127 +70,81 @@ def upload_file():
         filename = file.filename
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
-
         extracted_text = extract_text(filepath)
-        return jsonify({
-            'filename': filename,
-            'extracted_text': extracted_text
-        })
+        return jsonify({'filename': filename, 'extracted_text': extracted_text})
 
     return jsonify({'error': 'Invalid file format'}), 400
-
-def highlight_lines(text, lines):
-    for line in sorted(lines, key=len, reverse=True):
-        pattern = re.escape(line.strip())
-        text = re.sub(pattern, f"<mark>{line.strip()}</mark>", text, flags=re.IGNORECASE)
-    return text
 
 @app.route('/check_plagiarism', methods=['POST'])
 def check_self_plagiarism():
     data = request.get_json()
     text = data.get('text')
-
     if not text:
         return jsonify({'error': 'No text provided'}), 400
 
     try:
         result = check_duplicates_in_single_file(text)
-        report_text = result.get("report_text", "")
-        matched_lines = result.get("matched_lines", [])
-        originality_score = result.get("originality_score", 100)
-
-        highlighted_text = highlight_lines(text, matched_lines)
-
+        highlighted_text = highlight_lines(text, result.get("matched_lines", []))
         return jsonify({
             'highlighted_text': highlighted_text,
-            'report_text': report_text,
-            'originality_score': originality_score,
+            'report_text': result.get("report_text", ""),
+            'originality_score': result.get("originality_score", 100),
             'clean_text': text
         })
-
-    except Exception as e:
-        print("❌ Error checking duplicates:", traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        return jsonify({'error': traceback.format_exc()}), 500
 
 @app.route('/check_citation', methods=['POST'])
 def check_citation():
     data = request.get_json()
     text = data.get('text')
-
     if not text:
         return jsonify({'error': 'No text provided'}), 400
-
     try:
-        result = check_citations(text)
-        return jsonify({'citation_analysis': result})
-    except Exception as e:
-        print("❌ Citation Check Error:", traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'citation_analysis': check_citations(text)})
+    except Exception:
+        return jsonify({'error': traceback.format_exc()}), 500
 
 @app.route('/paraphrase', methods=['POST'])
 def paraphrase_route():
     data = request.get_json()
     text = data.get('text', '')
-
     if not text.strip():
         return jsonify({'error': 'No text provided.'}), 400
-
     try:
-        rewritten = paraphrase_paragraphs(text)
-        return jsonify({'paraphrased_text': rewritten})
-    except Exception as e:
-        print("❌ Error during paraphrasing:", traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'paraphrased_text': paraphrase_paragraphs(text)})
+    except Exception:
+        return jsonify({'error': traceback.format_exc()}), 500
 
 @app.route('/export_pdf', methods=['POST'])
 def export_pdf():
     data = request.get_json()
     paraphrased = data.get('paraphrased_text', '')
-
     try:
         exporter = PDFExporter()
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'paraphrased_output.pdf')
         exporter.generate_report(paraphrased)
         exporter.export(output_path)
-
         if os.path.exists(output_path):
-            print("✅ PDF Exported to:", output_path)
             return jsonify({'success': True, 'download_url': '/download_pdf'})
         else:
-            print("❌ PDF was not created.")
             return jsonify({'error': 'PDF export failed'}), 500
-    except Exception as e:
-        print("❌ PDF Export Error:", traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        return jsonify({'error': traceback.format_exc()}), 500
 
 @app.route('/download_pdf', methods=['GET'])
 def download_pdf():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'paraphrased_output.pdf')
     if os.path.exists(filepath):
         return send_file(filepath, as_attachment=True)
-    else:
-        return "❌ PDF file not found.", 404
+    return "❌ PDF file not found.", 404
 
 @app.route('/health')
 def health():
     return jsonify({'status': 'OK'})
-import os
-import qrcode
-from io import BytesIO
-import base64
-import uuid
-from flask import Flask, jsonify, request
 
-app = Flask(__name__)
 
-# Public URL for Render (change this if you redeploy with a new URL)
-RENDER_URL = "https://plagpro-zaha.onrender.com"
-
-def get_app_base_url():
-    """Always return the Render public URL."""
-    return RENDER_URL
-
-# ---------------- QR Code for main interface ----------------
+# ------------------- QR Routes -------------------
 @app.route('/generate_qr')
 def generate_qr():
     url = get_app_base_url()
@@ -193,7 +161,6 @@ def qr_page():
     buffer = BytesIO()
     qr_img.save(buffer, format="PNG")
     img_str = base64.b64encode(buffer.getvalue()).decode()
-
     return f"""
     <!DOCTYPE html>
     <html>
@@ -212,40 +179,27 @@ def qr_page():
                 border-radius: 20px;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             }}
-            h1 {{
-                font-size: 28px;
-                margin-bottom: 10px;
-            }}
-            p {{
-                font-size: 18px;
-            }}
         </style>
     </head>
     <body>
         <h1>📱 Scan to Connect</h1>
-        <p>Scan this QR code on your mobile to open ProofWise AI</p>
-        <img src="data:image/png;base64,{img_str}" alt="QR Code" />
+        <p>Scan this QR code to open ProofWise AI</p>
+        <img src="data:image/png;base64,{img_str}" />
         <p>Or visit: <b>{url}</b></p>
     </body>
     </html>
     """
 
-# ---------------- Mobile upload handling ----------------
-MOBILE_UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'mobile_uploads')
-os.makedirs(MOBILE_UPLOAD_FOLDER, exist_ok=True)
 
-mobile_sessions = {}  # { session_id: filename }
-
+# ------------------- Mobile Upload Routes -------------------
 @app.route("/get_mobile_qr", methods=["GET"])
 def get_mobile_qr():
     session_id = str(uuid.uuid4())
     mobile_url = f"{get_app_base_url()}/mobile-upload/{session_id}"
-
     qr_img = qrcode.make(mobile_url)
     buf = BytesIO()
     qr_img.save(buf, format="PNG")
     img_b64 = base64.b64encode(buf.getvalue()).decode()
-
     mobile_sessions[session_id] = None
     return jsonify({"session_id": session_id, "qr_code": img_b64})
 
@@ -282,7 +236,8 @@ def check_mobile_file(session_id):
         return jsonify({"ready": True, "filename": filename})
     return jsonify({"ready": False})
 
-# ---------------- Run app ----------------
+
+# ------------------- Run App -------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
