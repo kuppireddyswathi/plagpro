@@ -283,6 +283,6 @@ def check_mobile_file(session_id):
 # ---------- MAIN ----------
 if __name__ == "__main__":
     import os
-    port = int(os.environ.get("PORT", 5000))  # Render's PORT or default 5000
-    app.run(host="0.0.0.0", port=port, debug=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
