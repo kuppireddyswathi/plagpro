@@ -211,10 +211,19 @@ def mobile_upload(session_id):
             filename = f"{session_id}_{file.filename}"
             filepath = os.path.join(MOBILE_UPLOAD_FOLDER, filename)
             file.save(filepath)
-            mobile_sessions[session_id] = filename
-            return "✅ File uploaded successfully. You can close this tab."
+
+            # Immediately extract text just like in /upload
+            extracted_text = extract_text(filepath)
+
+            # Store both filename and extracted text
+            mobile_sessions[session_id] = {
+                "filename": filename,
+                "extracted_text": extracted_text
+            }
+            return "✅ File uploaded & processed. You can close this tab."
         return "❌ No file uploaded."
 
+    # Simple HTML form for mobile
     return """
     <!DOCTYPE html>
     <html>
@@ -231,9 +240,13 @@ def mobile_upload(session_id):
 
 @app.route("/check_mobile_file/<session_id>", methods=["GET"])
 def check_mobile_file(session_id):
-    filename = mobile_sessions.get(session_id)
-    if filename:
-        return jsonify({"ready": True, "filename": filename})
+    session_data = mobile_sessions.get(session_id)
+    if session_data:
+        return jsonify({
+            "ready": True,
+            "filename": session_data["filename"],
+            "extracted_text": session_data["extracted_text"]
+        })
     return jsonify({"ready": False})
 
 
