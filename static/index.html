@@ -270,6 +270,31 @@
       </div>
     </div>
   </div>
+<button id="mobileUploadBtn">📱 Upload from Mobile</button>
+<div id="qrPopup" style="display:none; margin-top: 20px;">
+    <h3>Scan with your phone</h3>
+    <img id="qrImage" style="width: 200px; border: 1px solid #ccc; padding: 5px;">
+</div>
+
+<script>
+document.getElementById("mobileUploadBtn").addEventListener("click", async () => {
+    const res = await fetch("/get_mobile_qr");
+    const data = await res.json();
+    document.getElementById("qrImage").src = "data:image/png;base64," + data.qr_code;
+    document.getElementById("qrPopup").style.display = "block";
+
+    const interval = setInterval(async () => {
+        const check = await fetch(`/check_mobile_file/${data.session_id}`);
+        const status = await check.json();
+        if (status.ready) {
+            clearInterval(interval);
+            alert("📂 File received: " + status.filename);
+            // Auto-send it to plagiarism checker
+            window.location.reload();
+        }
+    }, 3000);
+});
+</script>
 
   <!-- SCRIPT -->
   <script>
