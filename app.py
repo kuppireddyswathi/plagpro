@@ -225,6 +225,60 @@ def qr_page():
     </body>
     </html>
     """
+import uuid
+
+MOBILE_UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'mobile_uploads')
+os.makedirs(MOBILE_UPLOAD_FOLDER, exist_ok=True)
+
+mobile_sessions = {}  # { session_id: filename }
+
+@app.route("/get_mobile_qr", methods=["GET"])
+def get_mobile_qr():
+    session_id = str(uuid.uuid4())
+    ip = get_local_ip()
+    mobile_url = f"http://{ip}:5000/mobile-upload/{session_id}"
+
+    # Generate QR
+    qr_img = qrcode.make(mobile_url)
+    buf = BytesIO()
+    qr_img.save(buf, format="PNG")
+    img_b64 = base64.b64encode(buf.getvalue()).decode()
+
+    mobile_sessions[session_id] = None
+    return jsonify({"session_id": session_id, "qr_code": img_b64})
+
+@app.route("/mobile-upload/<session_id>", methods=["GET", "POST"])
+def mobile_upload(session_id):
+    if request.method == "POST":
+        file = request.files.get("file")
+        if file:
+            filename = f"{session_id}_{file.filename}"
+            filepath = os.path.join(MOBILE_UPLOAD_FOLDER, filename)
+            file.save(filepath)
+            mobile_sessions[session_id] = filename
+            return "✅ File uploaded successfully. You can close this tab."
+        return "❌ No file uploaded."
+
+    return """
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial; text-align: center; padding-top: 50px;">
+        <h2>Upload to Laptop</h2>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <br><br>
+            <button type="submit">Upload</button>
+        </form>
+    </body>
+    </html>
+    """
+
+@app.route("/check_mobile_file/<session_id>", methods=["GET"])
+def check_mobile_file(session_id):
+    filename = mobile_sessions.get(session_id)
+    if filename:
+        return jsonify({"ready": True, "filename": filename})
+    return jsonify({"ready": False})
 
 
 # ---------- MAIN ----------
