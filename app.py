@@ -165,15 +165,18 @@ import qrcode
 from io import BytesIO
 import base64
 import uuid
-from flask import jsonify, request
+from flask import Flask, jsonify, request
 
-# Public URL for Render
+app = Flask(__name__)
+
+# Public URL for Render (change this if you redeploy with a new URL)
 RENDER_URL = "https://plagpro-zaha.onrender.com"
 
 def get_app_base_url():
     """Always return the Render public URL."""
     return RENDER_URL
 
+# ---------------- QR Code for main interface ----------------
 @app.route('/generate_qr')
 def generate_qr():
     url = get_app_base_url()
@@ -227,6 +230,7 @@ def qr_page():
     </html>
     """
 
+# ---------------- Mobile upload handling ----------------
 MOBILE_UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'mobile_uploads')
 os.makedirs(MOBILE_UPLOAD_FOLDER, exist_ok=True)
 
@@ -237,7 +241,6 @@ def get_mobile_qr():
     session_id = str(uuid.uuid4())
     mobile_url = f"{get_app_base_url()}/mobile-upload/{session_id}"
 
-    # Generate QR
     qr_img = qrcode.make(mobile_url)
     buf = BytesIO()
     qr_img.save(buf, format="PNG")
@@ -279,10 +282,7 @@ def check_mobile_file(session_id):
         return jsonify({"ready": True, "filename": filename})
     return jsonify({"ready": False})
 
-
-# ---------- MAIN ----------
+# ---------------- Run app ----------------
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-
