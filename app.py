@@ -160,21 +160,19 @@ def download_pdf():
 @app.route('/health')
 def health():
     return jsonify({'status': 'OK'})
-import socket
+import os
 import qrcode
 from io import BytesIO
 import base64
+import uuid
+from flask import jsonify, request
+
+# Public URL for Render
+RENDER_URL = "https://plagpro-zaha.onrender.com"
+
 def get_app_base_url():
-    """Return the correct base URL depending on environment."""
-    render_url = os.environ.get("RENDER_EXTERNAL_URL")
-    if render_url:
-        return f"https://{render_url}"
-    else:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return f"http://{ip}:5000"
+    """Always return the Render public URL."""
+    return RENDER_URL
 
 @app.route('/generate_qr')
 def generate_qr():
@@ -229,6 +227,11 @@ def qr_page():
     </html>
     """
 
+MOBILE_UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'mobile_uploads')
+os.makedirs(MOBILE_UPLOAD_FOLDER, exist_ok=True)
+
+mobile_sessions = {}  # { session_id: filename }
+
 @app.route("/get_mobile_qr", methods=["GET"])
 def get_mobile_qr():
     session_id = str(uuid.uuid4())
@@ -243,6 +246,38 @@ def get_mobile_qr():
     mobile_sessions[session_id] = None
     return jsonify({"session_id": session_id, "qr_code": img_b64})
 
+@app.route("/mobile-upload/<session_id>", methods=["GET", "POST"])
+def mobile_upload(session_id):
+    if request.method == "POST":
+        file = request.files.get("file")
+        if file:
+            filename = f"{session_id}_{file.filename}"
+            filepath = os.path.join(MOBILE_UPLOAD_FOLDER, filename)
+            file.save(filepath)
+            mobile_sessions[session_id] = filename
+            return "✅ File uploaded successfully. You can close this tab."
+        return "❌ No file uploaded."
+
+    return """
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial; text-align: center; padding-top: 50px;">
+        <h2>Upload to Laptop</h2>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <br><br>
+            <button type="submit">Upload</button>
+        </form>
+    </body>
+    </html>
+    """
+
+@app.route("/check_mobile_file/<session_id>", methods=["GET"])
+def check_mobile_file(session_id):
+    filename = mobile_sessions.get(session_id)
+    if filename:
+        return jsonify({"ready": True, "filename": filename})
+    return jsonify({"ready": False})
 
 
 # ---------- MAIN ----------
