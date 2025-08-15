@@ -211,48 +211,18 @@ def mobile_upload(session_id):
             filepath = os.path.join(MOBILE_UPLOAD_FOLDER, filename)
             file.save(filepath)
 
-            try:
-                # 1. Extract text
-                extracted_text = extract_text(filepath)
+            # Immediately extract text just like in /upload
+            extracted_text = extract_text(filepath)
 
-                # 2. Plagiarism check
-                plagiarism_result = check_duplicates_in_single_file(extracted_text)
-                highlighted_text = highlight_lines(
-                    extracted_text,
-                    plagiarism_result.get("matched_lines", [])
-                )
-
-                # 3. Citation check
-                citation_result = check_citations(extracted_text)
-
-                # 4. Paraphrase
-                paraphrased = paraphrase_paragraphs(extracted_text)
-
-                # 5. Export to PDF (optional)
-                output_pdf_path = os.path.join(UPLOAD_FOLDER, f"{session_id}_output.pdf")
-                exporter = PDFExporter()
-                exporter.generate_report(paraphrased)
-                exporter.export(output_pdf_path)
-
-                # Save all results for laptop retrieval
-                mobile_sessions[session_id] = {
-                    "filename": filename,
-                    "extracted_text": extracted_text,
-                    "highlighted_text": highlighted_text,
-                    "plagiarism_report": plagiarism_result.get("report_text", ""),
-                    "originality_score": plagiarism_result.get("originality_score", 100),
-                    "citation_analysis": citation_result,
-                    "paraphrased_text": paraphrased,
-                    "pdf_path": output_pdf_path
-                }
-
-                return "✅ File uploaded & processed successfully. You can close this tab."
-            except Exception as e:
-                return f"❌ Error during processing: {str(e)}"
-
+            # Store both filename and extracted text
+            mobile_sessions[session_id] = {
+                "filename": filename,
+                "extracted_text": extracted_text
+            }
+            return "✅ File uploaded & processed. You can close this tab."
         return "❌ No file uploaded."
 
-    # GET request → show upload form
+    # Simple HTML form for mobile
     return """
     <!DOCTYPE html>
     <html>
@@ -266,11 +236,16 @@ def mobile_upload(session_id):
     </body>
     </html>
     """
+
 @app.route("/check_mobile_file/<session_id>", methods=["GET"])
 def check_mobile_file(session_id):
-    data = mobile_sessions.get(session_id)
-    if data:
-        return jsonify({"ready": True, **data})
+    session_data = mobile_sessions.get(session_id)
+    if session_data:
+        return jsonify({
+            "ready": True,
+            "filename": session_data["filename"],
+            "extracted_text": session_data["extracted_text"]
+        })
     return jsonify({"ready": False})
 
 
