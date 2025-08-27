@@ -105,20 +105,22 @@ def check_citation():
         return jsonify({'citation_analysis': check_citations(text)})
     except Exception:
         return jsonify({'error': traceback.format_exc()}), 500
-
 @app.route("/paraphrase", methods=["POST"])
 def paraphrase():
     data = request.json
     text = data.get("text", "")
     mode = data.get("mode", "safe")
     style = data.get("style", "formal")
-    num_variations = int(data.get("num_variations", 2))
+    num_variations = int(data.get("num_variations", 3))
 
     try:
-        paraphrased = paraphrase_paragraphs(text, mode=mode, style=style, num_variations=num_variations)
+        paraphrased = paraphrase_paragraphs(
+            text, mode=mode, style=style, num_variations=num_variations
+        )
         return jsonify({"status": "success", "paraphrased": paraphrased})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 
 @app.route('/export_pdf', methods=['POST'])
