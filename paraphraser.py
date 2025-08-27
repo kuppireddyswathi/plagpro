@@ -1,18 +1,12 @@
 import os
 from huggingface_hub import InferenceClient
 
-# Get HF token from environment variable
-HF_TOKEN = os.environ.get("HF_API_TOKEN")
+HF_TOKEN = os.environ.get("HF_API_TOKEN")  # must match the key in Render
 if not HF_TOKEN:
     raise ValueError("HF_API_TOKEN environment variable not set!")
 
-
-# Model ID (hosted)
 MODEL_ID = "google/flan-t5-base"
-
-# Initialize HF Inference client
 client = InferenceClient(token=HF_TOKEN)
-
 # Supported modes and styles
 MODES = ["safe", "strong", "creative"]
 STYLES = ["formal", "casual", "academic", "technical"]
