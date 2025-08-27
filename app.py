@@ -8,6 +8,8 @@ import nltk
 import qrcode
 from io import BytesIO
 import base64
+from flask_cors import CORS
+from transformers import pipeline
 import uuid
 
 # Safe NLTK download
@@ -105,24 +107,43 @@ def check_citation():
         return jsonify({'citation_analysis': check_citations(text)})
     except Exception:
         return jsonify({'error': traceback.format_exc()}), 500
+# HuggingFace paraphrasing model
+paraphraser = pipeline("text2text-generation", model="Vamsi/T5_Paraphrase_Paws")
+
+# Mode + Style based prompts
+mode_prompts = {
+    "safe": "Rephrase this text safely without changing meaning:",
+    "strong": "Rephrase this text strongly with major wording changes but same meaning:",
+    "creative": "Paraphrase creatively with more expressive wording:"
+}
+
+style_prompts = {
+    "formal": "Make the tone formal.",
+    "casual": "Make the tone casual and friendly.",
+    "academic": "Make it suitable for academic writing.",
+    "technical": "Make it suitable for technical documentation."
+}
+
 @app.route("/paraphrase", methods=["POST"])
-def paraphrase():
-    data = request.json
-    text = data.get("text", "")
-    mode = data.get("mode", "safe")
-    style = data.get("style", "formal")
-    num_variations = int(data.get("num_variations", 3))
-
+def paraphrase_text():
     try:
-        paraphrased = paraphrase_paragraphs(
-            text, mode=mode, style=style, num_variations=num_variations
-        )
-        return jsonify({"status": "success", "paraphrased": paraphrased})
+        data = request.get_json()
+        text = data.get("text", "")
+        mode = data.get("mode", "safe")  # default safe
+        style = data.get("style", "formal")  # default formal
+
+        if not text.strip():
+            return jsonify({"error": "No input text provided"}), 400
+
+        # Construct prompt using mode + style
+        prompt = f"{mode_prompts[mode]} {style_prompts[style]} Text: {text}"
+
+        result = paraphraser(prompt, max_length=256, num_return_sequences=1, do_sample=True)
+
+        return jsonify({"paraphrased_text": result[0]['generated_text']})
+
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-
+        return jsonify({"error": str(e)})
 @app.route('/export_pdf', methods=['POST'])
 def export_pdf():
     data = request.get_json()
