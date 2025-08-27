@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_file
+from paraphraser import paraphrase_paragraphs
 from flask_cors import CORS
 import os
 import re
@@ -105,16 +106,20 @@ def check_citation():
     except Exception:
         return jsonify({'error': traceback.format_exc()}), 500
 
-@app.route('/paraphrase', methods=['POST'])
-def paraphrase_route():
-    data = request.get_json()
-    text = data.get('text', '')
-    if not text.strip():
-        return jsonify({'error': 'No text provided.'}), 400
+@app.route("/paraphrase", methods=["POST"])
+def paraphrase():
+    data = request.json
+    text = data.get("text", "")
+    mode = data.get("mode", "safe")
+    style = data.get("style", "formal")
+    num_variations = int(data.get("num_variations", 2))
+
     try:
-        return jsonify({'paraphrased_text': paraphrase_paragraphs(text)})
-    except Exception:
-        return jsonify({'error': traceback.format_exc()}), 500
+        paraphrased = paraphrase_paragraphs(text, mode=mode, style=style, num_variations=num_variations)
+        return jsonify({"status": "success", "paraphrased": paraphrased})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 @app.route('/export_pdf', methods=['POST'])
 def export_pdf():
