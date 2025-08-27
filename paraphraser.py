@@ -1,36 +1,32 @@
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+import os
+from huggingface_hub import InferenceClient
 
-# Lazy load model
-paraphraser = None
+# Get HF token from environment variable
+HF_TOKEN = os.environ.get("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")
+if not HF_TOKEN:
+    raise ValueError("HF_API_TOKEN environment variable not set!")
+
+# Model ID (hosted)
+MODEL_ID = "google/flan-t5-base"
+
+# Initialize HF Inference client
+client = InferenceClient(token=HF_TOKEN)
 
 # Supported modes and styles
 MODES = ["safe", "strong", "creative"]
 STYLES = ["formal", "casual", "academic", "technical"]
 
-# Model for Render / free tier
-MODEL_NAME = "google/flan-t5-base"
-
-def load_model():
-    global paraphraser
-    if paraphraser is None:
-        print("Loading model... (~1GB, first run may take some time)")
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
-        paraphraser = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
-
 def paraphrase_paragraphs(text, mode="safe", style="formal", num_variations=2):
     """
-    Paraphrase paragraphs with given mode and style using flan-t5-base.
+    Paraphrase paragraphs using Hugging Face hosted T5 model.
     Supports 3 modes × 4 styles = 12 combinations.
+    Returns list of paragraphs, each containing multiple variations.
     """
-    global paraphraser
-    load_model()
-    
     if mode not in MODES:
         raise ValueError(f"Invalid mode. Choose from {MODES}")
     if style not in STYLES:
         raise ValueError(f"Invalid style. Choose from {STYLES}")
-    
+
     paragraphs = text.split("\n")
     output = []
 
@@ -47,17 +43,34 @@ def paraphrase_paragraphs(text, mode="safe", style="formal", num_variations=2):
             f"in a {style} style and with {mode} paraphrasing:\n{para}"
         )
 
-        result = paraphraser(
-            prompt,
-            max_new_tokens=256,
-            num_return_sequences=num_variations,
-            do_sample=True,
-            top_k=200,
-            top_p=0.95,
-            temperature=1.3
-        )
+        variations = []
+        for _ in range(num_variations):
+            try:
+                resp = client.text_generation(
+                    model=MODEL_ID,
+                    inputs=prompt,
+                    max_new_tokens=256,
+                    do_sample=True,
+                    temperature=1.3,
+                    top_k=200,
+                    top_p=0.95
+                )
+                variations.append(resp.generated_text.strip())
+            except Exception as e:
+                variations.append(f"[Error generating paraphrase: {e}]")
 
-        variations = [r['generated_text'].strip() for r in result]
         output.append(variations)
 
     return output
+
+# # Optional local test
+# if __name__ == "__main__":
+#     test_text = """Plagiarism detection is an important task in academia.
+# It ensures originality and academic integrity.
+# Our system aims to detect copied content effectively."""
+
+#     results = paraphrase_paragraphs(test_text, mode="creative", style="academic", num_variations=3)
+#     for i, para in enumerate(results):
+#         print(f"\nParagraph {i+1} variations:")
+#         for j, v in enumerate(para):
+#             print(f"Option {j+1}: {v}")
