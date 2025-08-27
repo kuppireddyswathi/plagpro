@@ -2,9 +2,10 @@ import os
 from huggingface_hub import InferenceClient
 
 # Get HF token from environment variable
-HF_TOKEN = os.environ.get("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")
+HF_TOKEN = os.environ.get("HF_API_TOKEN")
 if not HF_TOKEN:
     raise ValueError("HF_API_TOKEN environment variable not set!")
+
 
 # Model ID (hosted)
 MODEL_ID = "google/flan-t5-base"
