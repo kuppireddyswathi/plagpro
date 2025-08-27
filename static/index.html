@@ -161,7 +161,7 @@
           </div>
         </div>
 
-      <!-- Paraphrase tile -->
+        <!-- Paraphrase tile -->
 <div class="tile" data-feature="paraphrase">
   <div class="card-inner">
     <div class="face front">
@@ -173,92 +173,30 @@
       </div>
       <div class="tile-sub">Reword text in different styles</div>
 
-      <!-- Text input -->
-      <textarea id="paraphrase_input" placeholder="Enter text here..." rows="4" style="width:100%;margin-top:10px;"></textarea>
 
-      <!-- Mode selector -->
-      <div style="margin-top:10px;">
-        <label for="paraphrase_mode">Mode:</label>
-        <select id="paraphrase_mode">
-          <option value="safe">Safe</option>
-          <option value="strong">Strong</option>
-          <option value="creative">Creative</option>
-        </select>
+     
+      <button class="btn" onclick="runParaphrase()">Paraphrase</button>
+      
+
+      <div style="margin-top:auto;display:flex;gap:10px;align-items:center">
+        <button class="btn ghost" onclick="openFeature('paraphrase', this)">Fullscreen</button>
+       
       </div>
-
-      <!-- Style selector -->
-      <div style="margin-top:10px;">
-        <label for="paraphrase_style">Style:</label>
-        <select id="paraphrase_style">
-          <option value="formal">Formal</option>
-          <option value="casual">Casual</option>
-          <option value="academic">Academic</option>
-          <option value="technical">Technical</option>
-        </select>
-      </div>
-
-      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
-        <button class="btn" onclick="runParaphrase()">Paraphrase</button>
-        <div class="chip">Options selected</div>
-      </div>
-
-      <!-- Output container -->
-      <div id="paraphrase_output" style="margin-top:10px;"></div>
-
     </div>
+
     <div class="face back">
       <div style="font-weight:700">Paraphrase</div>
     </div>
   </div>
 </div>
 
-<script>
-async function runParaphrase() {
-    const text = document.getElementById("paraphrase_input").value;
-    const mode = document.getElementById("paraphrase_mode").value;
-    const style = document.getElementById("paraphrase_style").value;
-
-    if (!text.trim()) {
-        alert("Please enter text to paraphrase.");
-        return;
-    }
-
-    const outputDiv = document.getElementById("paraphrase_output");
-    outputDiv.innerHTML = "Processing...";
-
-    try {
-        const response = await fetch("/paraphrase", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({text, mode, style, num_variations: 3})
-        });
-
-        const result = await response.json();
-        if (result.status === "success") {
-            let html = "";
-            result.paraphrased.forEach((para, i) => {
-                html += `<b>Paragraph ${i+1} variations:</b><br>`;
-                para.forEach((v, j) => {
-                    html += `Option ${j+1}: ${v}<br>`;
-                });
-                html += "<br>";
-            });
-            outputDiv.innerHTML = html;
-        } else {
-            outputDiv.innerHTML = "Error: " + result.message;
-        }
-    } catch (err) {
-        outputDiv.innerHTML = "Error: " + err.message;
-    }
-}
-</script>
 
         <!-- Export tile -->
         <div class="tile" data-feature="export">
           <div class="card-inner">
             <div class="face front">
               <div class="tile-title">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 3v12M8 7l4-4 4 4M21 21H3" stroke="black" stroke-width="1.6"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 3v12M8 7l4-4 4 4M21 21H3" stroke="white" stroke-width="1.6"/></svg>
                 <div>Export</div>
               </div>
               <div class="tile-sub">Export paraphrased output to PDF</div>
@@ -276,7 +214,7 @@ async function runParaphrase() {
           <div class="card-inner">
             <div class="face front">
               <div class="tile-title">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M4 6h16M4 12h10M4 18h16" stroke="black" stroke-width="1.6"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M4 6h16M4 12h10M4 18h16" stroke="white" stroke-width="1.6"/></svg>
                 <div>Summarize</div>
               </div>
               <div class="tile-sub">Concise, detailed or bullet summaries</div>
@@ -344,31 +282,6 @@ async function runParaphrase() {
       </div>
     </div>
   </div>
-<button id="mobileUploadBtn">📱 Upload from Mobile</button>
-<div id="qrPopup" style="display:none; margin-top: 20px;">
-    <h3>Scan with your phone</h3>
-    <img id="qrImage" style="width: 200px; border: 1px solid #ccc; padding: 5px;">
-</div>
-
-<script>
-document.getElementById("mobileUploadBtn").addEventListener("click", async () => {
-    const res = await fetch("/get_mobile_qr");
-    const data = await res.json();
-    document.getElementById("qrImage").src = "data:image/png;base64," + data.qr_code;
-    document.getElementById("qrPopup").style.display = "block";
-
-    const interval = setInterval(async () => {
-        const check = await fetch(`/check_mobile_file/${data.session_id}`);
-        const status = await check.json();
-        if (status.ready) {
-            clearInterval(interval);
-            alert("📂 File received: " + status.filename);
-            // Auto-send it to plagiarism checker
-            window.location.reload();
-        }
-    }, 3000);
-});
-</script>
 
   <!-- SCRIPT -->
   <script>
@@ -544,40 +457,58 @@ document.getElementById("mobileUploadBtn").addEventListener("click", async () =>
         document.getElementById('pasteSideCite').addEventListener('click', ()=> { document.getElementById('citeText').value = window.lastCleanText || ''; });
       }
 
-      else if(feature === 'paraphrase'){
-        takeoverBody.innerHTML = `
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:800;font-size:20px">Paraphrase</div>
-              <select id="paraStyleSelect" style="padding:8px;border-radius:8px">
-                <option value="formal">Formal</option>
-                <option value="simplified">Simplified</option>
-                <option value="creative">Creative</option>
-                <option value="technical">Technical</option>
-              </select>
-            </div>
-            <div class="muted" style="margin-bottom:12px">Uploaded text pre-fills below — edit if you want different input.</div>
-            <textarea id="paraText" style="min-height:220px">${window.lastCleanText || ''}</textarea>
-            <div style="display:flex;gap:10px;margin-top:10px">
-              <button class="btn" id="runPara">Paraphrase</button>
-              <button class="btn ghost" id="pasteSidePara">Use Side Extract</button>
-            </div>
+      else if (feature === 'paraphrase') {
+  takeoverBody.innerHTML = `
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="font-weight:800;font-size:20px">Paraphrase</div>
 
-            <div style="display:flex;gap:12px;margin-top:14px">
-              <div style="flex:1">
-                <div style="font-weight:700">Original</div>
-                <div id="paraOriginal" class="result" style="min-height:120px">${window.lastCleanText || ''}</div>
-              </div>
-              <div style="flex:1">
-                <div style="font-weight:700">Paraphrased</div>
-                <div id="paraOut" class="result" style="min-height:120px">—</div>
-              </div>
-            </div>
-          </div>
-        `;
-        document.getElementById('runPara').addEventListener('click', runParaphrase);
-        document.getElementById('pasteSidePara').addEventListener('click', ()=> { document.getElementById('paraText').value = window.lastCleanText || ''; });
-      }
+        <!-- ✅ Mode Dropdown -->
+        <select id="paraModeSelect" style="padding:8px;border-radius:8px">
+          <option value="safe">Safe</option>
+          <option value="strong">Strong</option>
+          <option value="creative">Creative</option>
+        </select>
+
+        <!-- ✅ Style Dropdown -->
+        <select id="paraStyleSelect" style="padding:8px;border-radius:8px">
+          <option value="formal">Formal</option>
+          <option value="casual">Casual</option>
+          <option value="academic">Academic</option>
+          <option value="technical">Technical</option>
+        </select>
+      </div>
+
+      <div class="muted" style="margin-bottom:12px">
+        Uploaded text pre-fills below — edit if you want different input.
+      </div>
+
+      <textarea id="paraText" style="min-height:220px">${window.lastCleanText || ''}</textarea>
+
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button class="btn" id="runPara">Paraphrase</button>
+        <button class="btn ghost" id="pasteSidePara">Use Side Extract</button>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:14px">
+        <div style="flex:1">
+          <div style="font-weight:700">Original</div>
+          <div id="paraOriginal" class="result" style="min-height:120px">${window.lastCleanText || ''}</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:700">Paraphrased</div>
+          <div id="paraOut" class="result" style="min-height:120px">—</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('runPara').addEventListener('click', runParaphrase);
+  document.getElementById('pasteSidePara').addEventListener('click', () => {
+    document.getElementById('paraText').value = window.lastCleanText || '';
+  });
+}
+
 
       else if(feature === 'export'){
         takeoverBody.innerHTML = `
@@ -690,27 +621,53 @@ document.getElementById("mobileUploadBtn").addEventListener("click", async () =>
     }
 
     // 3) Paraphrase
-    async function runParaphrase(){
-      const text = document.getElementById('paraText').value.trim();
-      const style = document.getElementById('paraStyleSelect').value || 'formal';
-      if(!text) return alert('Paste text or use side extract first');
-      const out = document.getElementById('paraOut'), orig = document.getElementById('paraOriginal');
-      out.textContent = '⏳ Paraphrasing...';
-      try {
-        const r = await fetch('/paraphrase', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, style })});
-        const json = await r.json();
-        if(r.ok && json.paraphrased_text){
-          out.textContent = json.paraphrased_text;
-          orig.textContent = text;
-          window.lastParaphrased = json.paraphrased_text;
-        } else {
-          out.textContent = json.error || 'Paraphrase failed';
-        }
-      } catch(e){
-        console.error(e);
-        out.textContent = '❌ Paraphrase error';
-      }
+    async function runParaphrase() {
+  const text =
+    document.getElementById("paraphraseInput")?.value ||
+    document.getElementById("paraText")?.value ||
+    "";
+  const mode =
+    document.getElementById("modeSelect")?.value ||
+    document.getElementById("paraModeSelect")?.value ||
+    "safe";
+  const style =
+    document.getElementById("styleSelect")?.value ||
+    document.getElementById("paraStyleSelect")?.value ||
+    "formal";
+
+  const resultBox =
+    document.getElementById("paraphraseResult") ||
+    document.getElementById("paraOut");
+
+  if (!text.trim()) {
+    resultBox.textContent = "⚠️ Please enter text to paraphrase.";
+    return;
+  }
+
+  resultBox.textContent = "⏳ Paraphrasing...";
+
+  try {
+    const res = await fetch("/paraphrase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, mode, style })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.variations) {
+      const output = data.variations
+        .map((v, i) => `<p><strong>Variation ${i + 1}:</strong> ${v}</p>`)
+        .join("");
+      resultBox.innerHTML = output;
+      window.lastParaphrased = data.variations[0] || "";
+    } else {
+      resultBox.textContent = data.error || "❌ Paraphrasing failed.";
     }
+  } catch (err) {
+    console.error(err);
+    resultBox.textContent = "❌ Error contacting backend.";
+  }
+}
 
     // 4) Export
     async function runExport(){
