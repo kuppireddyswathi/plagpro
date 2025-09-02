@@ -1,62 +1,52 @@
+# paraphraser.py
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
-MODEL_ID = "google/flan-t5-small"   # ✅ much lighter
+# ✅ Small model load (Render 512Mi కి safe)
+MODEL_ID = "google/flan-t5-small"
 
+# Tokenizer + model
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_ID)
+model = AutoModelForSeq2SeqLM.from_pretrained(
+    MODEL_ID,
+    low_cpu_mem_usage=True  # saves memory
+)
 
+# Paraphrasing pipeline
 paraphraser = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
-def paraphrase_paragraphs(text, num_variations=3, max_length=256):
+
+def paraphrase_text(text: str, num_return_sequences: int = 1, max_length: int = 128):
     """
-    Simple paraphraser using T5 model.
-    No modes, no styles. Just generates paraphrased versions.
-    Returns: list[list[str]] (variations for each paragraph)
+    Basic paraphrasing function using T5-small.
+    Input: plain text
+    Output: list of paraphrased variations
     """
-    paragraphs = text.split("\n")
-    output = []
+    if not text.strip():
+        return [""]
 
-    for para in paragraphs:
-        para = para.strip()
-        if not para:
-            output.append([])
-            continue
-        if len(para.split()) < 5:
-            output.append([para])  # too short
-            continue
+    # Construct simple prompt (T5 style)
+    prompt = f"paraphrase: {text}"
 
-        # Create prompt for T5
-        prompt = f"paraphrase: {para}"
+    try:
+        outputs = paraphraser(
+            prompt,
+            max_length=max_length,
+            num_return_sequences=num_return_sequences,
+            do_sample=True,
+            top_k=50,
+            top_p=0.95,
+            temperature=0.9,
+        )
 
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True)
+        return [o["generated_text"].strip() for o in outputs]
 
-        # Collect variations
-        variations = []
-        for _ in range(num_variations):
-            outputs = model.generate(
-                **inputs,
-                max_length=max_length,
-                num_beams=5,
-                num_return_sequences=1,
-                temperature=1.2,
-                top_p=0.9,
-                do_sample=True
-            )
-            text_out = tokenizer.decode(outputs[0], skip_special_tokens=True)
-            variations.append(text_out)
-
-        output.append(variations)
-
-    return output
+    except Exception as e:
+        return [f"[Error during paraphrasing: {e}]"]
 
 
-# Local test
-if __name__ == "__main__":
-    text = """Plagiarism detection is an important task in academia.
-It ensures originality and academic integrity.
-Our system aims to detect copied content effectively."""
-
-    results = paraphrase_paragraphs(text, num_variations=2)
-    for i, para in enumerate(results):
-        print(f"\nParagraph {i+1}:")
-        for j, v in enumerate(para):
-            print(f"Option {j+1}: {v}")
+# # ✅ Local test
+# if __name__ == "__main__":
+#     sample = "Plagiarism detection helps maintain academic integrity."
+#     results = paraphrase_text(sample, num_return_sequences=2)
+#     print("\nInput:", sample)
+#     for i, r in enumerate(results, 1):
+#         print(f"Variation {i}: {r}")
