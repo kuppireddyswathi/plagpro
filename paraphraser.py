@@ -1,10 +1,11 @@
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
-# Load once at startup
-MODEL_ID = "t5-base"   # or "google/flan-t5-base" (slightly better, bigger)
+MODEL_ID = "google/flan-t5-small"   # ✅ much lighter
+
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_ID)
 
+paraphraser = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
 def paraphrase_paragraphs(text, num_variations=3, max_length=256):
     """
     Simple paraphraser using T5 model.
