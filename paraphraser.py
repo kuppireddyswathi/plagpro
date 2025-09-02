@@ -1,24 +1,42 @@
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-import torch
+# paraphraser.py
+import os
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
-# Local folder lo model unte path ivvu (download chesina flan-t5-small for example)
-MODEL_PATH = "./flan-t5-small"
+# ✅ Cache location safe గా మార్చు (Render free tier కోసం)
+os.environ["TRANSFORMERS_CACHE"] = "/tmp"
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_PATH)
+# ✅ Smallest T5 model వాడు (base వాడితే OOM వచ్చే chance ఉంది)
+MODEL_ID = "google/flan-t5-small"
 
-def paraphrase_text(text: str):
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    outputs = model.generate(
-        **inputs,
+# ✅ Load tokenizer & model
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_ID)
+
+# ✅ Create pipeline once (fast for reuse)
+paraphraser = pipeline(
+    "text2text-generation",
+    model=model,
+    tokenizer=tokenizer,
+    device=-1   # CPU only (Render free tier కి safe)
+)
+
+def paraphrase_text(text: str, num_return_sequences: int = 1):
+    """
+    Simple paraphraser using flan-t5-small.
+    Returns list of paraphrased variations.
+    """
+    if not text.strip():
+        return ["[No input text]"]
+
+    prompt = f"Paraphrase the following text:\n{text}"
+
+    outputs = paraphraser(
+        prompt,
         max_length=256,
-        num_return_sequences=1,
+        num_return_sequences=num_return_sequences,
         do_sample=True,
         temperature=1.2,
-        top_p=0.9
+        top_p=0.95
     )
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-# Test
-if __name__ == "__main__":
-    print(paraphrase_text("Plagiarism detection is an important task in academia."))
+    return [o["generated_text"].strip() for o in outputs]
