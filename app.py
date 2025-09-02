@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_file
-from paraphraser import paraphrase_paragraphs
+
 from paraphraser import paraphrase_text
 
 from flask_cors import CORS
