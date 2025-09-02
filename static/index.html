@@ -457,26 +457,11 @@
         document.getElementById('pasteSideCite').addEventListener('click', ()=> { document.getElementById('citeText').value = window.lastCleanText || ''; });
       }
 
-      else if (feature === 'paraphrase') {
+     ... else if (feature === 'paraphrase') {
   takeoverBody.innerHTML = `
     <div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
         <div style="font-weight:800;font-size:20px">Paraphrase</div>
-
-        <!-- ✅ Mode Dropdown -->
-        <select id="paraModeSelect" style="padding:8px;border-radius:8px">
-          <option value="safe">Safe</option>
-          <option value="strong">Strong</option>
-          <option value="creative">Creative</option>
-        </select>
-
-        <!-- ✅ Style Dropdown -->
-        <select id="paraStyleSelect" style="padding:8px;border-radius:8px">
-          <option value="formal">Formal</option>
-          <option value="casual">Casual</option>
-          <option value="academic">Academic</option>
-          <option value="technical">Technical</option>
-        </select>
       </div>
 
       <div class="muted" style="margin-bottom:12px">
@@ -485,7 +470,9 @@
 
       <textarea id="paraText" style="min-height:220px">${window.lastCleanText || ''}</textarea>
 
-      <div style="display:flex;gap:10px;margin-top:10px">
+      <div style="display:flex;gap:10px;margin-top:10px;align-items:center">
+        <label for="paraNum" style="font-weight:600">Variations:</label>
+        <input id="paraNum" type="number" value="2" min="1" max="5" style="width:60px;padding:6px;border-radius:6px;border:1px solid #ccc" />
         <button class="btn" id="runPara">Paraphrase</button>
         <button class="btn ghost" id="pasteSidePara">Use Side Extract</button>
       </div>
@@ -622,52 +609,35 @@
 
     // 3) Paraphrase
     async function runParaphrase() {
-  const text =
-    document.getElementById("paraphraseInput")?.value ||
-    document.getElementById("paraText")?.value ||
-    "";
-  const mode =
-    document.getElementById("modeSelect")?.value ||
-    document.getElementById("paraModeSelect")?.value ||
-    "safe";
-  const style =
-    document.getElementById("styleSelect")?.value ||
-    document.getElementById("paraStyleSelect")?.value ||
-    "formal";
-
-  const resultBox =
-    document.getElementById("paraphraseResult") ||
-    document.getElementById("paraOut");
+  const text = document.getElementById("paraText").value;
+  const num = parseInt(document.getElementById("paraNum").value) || 2;
 
   if (!text.trim()) {
-    resultBox.textContent = "⚠️ Please enter text to paraphrase.";
+    alert("Please enter some text to paraphrase.");
     return;
   }
 
-  resultBox.textContent = "⏳ Paraphrasing...";
-
   try {
-    const res = await fetch("/paraphrase", {
+    const response = await fetch("/paraphrase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, mode, style })
+      body: JSON.stringify({ text: text, num_variations: num })
     });
+    const data = await response.json();
 
-    const data = await res.json();
-    if (res.ok && data.variations) {
-      const output = data.variations
-        .map((v, i) => `<p><strong>Variation ${i + 1}:</strong> ${v}</p>`)
-        .join("");
-      resultBox.innerHTML = output;
-      window.lastParaphrased = data.variations[0] || "";
+    if (data.error) {
+      document.getElementById("paraOut").innerText = "❌ " + data.error;
     } else {
-      resultBox.textContent = data.error || "❌ Paraphrasing failed.";
+      // Show all variations joined with dividers
+      document.getElementById("paraOut").innerHTML =
+        data.paraphrased_text.map(v => `<p>${v}</p><hr>`).join("");
+      document.getElementById("paraOriginal").innerText = text;
     }
   } catch (err) {
-    console.error(err);
-    resultBox.textContent = "❌ Error contacting backend.";
+    document.getElementById("paraOut").innerText = "❌ Failed: " + err;
   }
 }
+
 
     // 4) Export
     async function runExport(){
