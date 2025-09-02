@@ -129,21 +129,22 @@ def paraphrase_text():
     try:
         data = request.get_json()
         text = data.get("text", "")
-        mode = data.get("mode", "safe")  # default safe
-        style = data.get("style", "formal")  # default formal
+        num_variations = int(data.get("num_variations", 2))  # default 2
 
         if not text.strip():
             return jsonify({"error": "No input text provided"}), 400
 
-        # Construct prompt using mode + style
-        prompt = f"{mode_prompts[mode]} {style_prompts[style]} Text: {text}"
+        result = paraphrase_paragraphs(text, num_variations=num_variations)
 
-        result = paraphraser(prompt, max_length=256, num_return_sequences=1, do_sample=True)
+        # Flatten results for UI (list of variations)
+        flat_results = []
+        for para in result:
+            flat_results.extend(para)
 
-        return jsonify({"paraphrased_text": result[0]['generated_text']})
+        return jsonify({"paraphrased_text": flat_results})
 
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e)}), 500
 @app.route('/export_pdf', methods=['POST'])
 def export_pdf():
     data = request.get_json()
